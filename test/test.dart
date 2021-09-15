@@ -1,6 +1,6 @@
 import 'package:big_decimal/big_decimal.dart';
-import 'package:test/test.dart';
 import 'package:debt_counter/counter.dart';
+import 'package:test/test.dart';
 
 void main() {
   test('30E date distance', () {
@@ -25,13 +25,41 @@ void main() {
 
     pd(int a, int b, int c) => PlainDate(a, b, c);
 
-    var inter = BigDecimal.parse("0.10")
-        .divide(days, scale: 20, roundingMode: RoundingMode.HALF_UP);
+    var inter = BigDecimal.parse("0.10").divide(days, scale: 20, roundingMode: RoundingMode.HALF_UP);
 
     var acc = Account(BigDecimal.parse("1000"), inter);
     bigIntExpect(ci(pd(2000, 1, 1), pd(2000, 1, 1), dist, acc), 0);
     bigIntExpect(ci(pd(2000, 1, 1), pd(2000, 7, 1), dist, acc), 50);
     bigIntExpect(ci(pd(2000, 1, 1), pd(2001, 1, 1), dist, acc), 100);
+  });
+
+  test('complex debt', () {
+    var debt = Debt();
+    debt.principal = Account.parse("0", (1.10 / 360).toString());
+    debt.principalInterest = Account.parse("0", "0");
+    debt.late = Account.parse("0", (0.15 / 360).toString());
+    debt.lateInterest = Account.parse("0", "0");
+    debt.sanctions = Account.parse("0", "0");
+    debt.sanctionsInterest = Account.parse("0", "0");
+
+    print(debt.snapshot);
+
+    debt.apply(DebtEvent(EventType.BALANCE, BigDecimal.parse("1000"), PlainDate(2000, 1, 1)));
+    print(debt.snapshot);
+    debt.apply(DebtEvent(EventType.BALANCE, BigDecimal.parse("1000"), PlainDate(2001, 1, 1)));
+    print(debt.snapshot);
+    debt.apply(DebtEvent(EventType.EXPECTATION, BigDecimal.parse("1100"), PlainDate(2002, 1, 1)));
+    print(debt.snapshot);
+    debt.apply(DebtEvent(EventType.EXPECTATION, BigDecimal.parse("1100"), PlainDate(2002, 2, 1)));
+    print(debt.snapshot);
+    debt.apply(DebtEvent(EventType.SNAPSHOT, BigDecimal.parse("0"), PlainDate(2002, 3, 1)));
+    print(debt.snapshot);
+    debt.apply(DebtEvent(EventType.SNAPSHOT, BigDecimal.parse("0"), PlainDate(2002, 4, 1)));
+    print(debt.snapshot);
+    debt.apply(DebtEvent(EventType.PAYMENT, BigDecimal.parse("2000"), PlainDate(2002, 5, 1)));
+    print(debt.snapshot);
+    debt.apply(DebtEvent(EventType.SNAPSHOT, BigDecimal.parse("0"), PlainDate(2002, 6, 1)));
+    print(debt.snapshot);
   });
 }
 
