@@ -39,6 +39,11 @@ class DebtEvent implements Comparable<DebtEvent> {
   int compareTo(DebtEvent other) {
     return date.compareTo(other.date);
   }
+
+  @override
+  String toString() {
+    return 'DebtEvent{type: $type, amount: $amount, date: $date}';
+  }
 }
 
 class Account {
@@ -69,7 +74,7 @@ class DebtSnapshot {
 
   @override
   String toString() {
-    return 'DebtSnapshot{${date} principal: $principal, principalInterest: $principalInterest, late: $late, lateInterest: $lateInterest, sanctions: $sanctions, sanctionsInterest: $sanctionsInterest => $sum}';
+    return 'DebtSnapshot{[${date}] principal: $principal, principalInterest: $principalInterest, late: $late, lateInterest: $lateInterest, sanctions: $sanctions, sanctionsInterest: $sanctionsInterest, SUM=$sum}';
   }
 }
 
@@ -92,6 +97,7 @@ class Debt {
   }
 
   void apply(DebtEvent e) {
+    print("Applying: $e");
     if (lastEvent != null && lastEvent != e.date) {
       principalInterest = principalInterest.addBalance(DebtCounter.countInterest(lastEvent!, e.date, DebtCounter.count30E360Distance, principal));
       lateInterest = lateInterest.addBalance(DebtCounter.countInterest(lastEvent!, e.date, DebtCounter.count30E360Distance, late));
@@ -112,6 +118,7 @@ class Debt {
     if (e.type == EventType.SANCTION) {
       sanctions = sanctions.addBalance(e.amount);
     }
+    print("Result: $snapshot");
   }
 
   DebtSnapshot get snapshot {

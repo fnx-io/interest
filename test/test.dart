@@ -45,21 +45,13 @@ void main() {
     print(debt.snapshot);
 
     debt.apply(DebtEvent(EventType.BALANCE, BigDecimal.parse("1000"), PlainDate(2000, 1, 1)));
-    print(debt.snapshot);
     debt.apply(DebtEvent(EventType.BALANCE, BigDecimal.parse("1000"), PlainDate(2001, 1, 1)));
-    print(debt.snapshot);
     debt.apply(DebtEvent(EventType.EXPECTATION, BigDecimal.parse("1100"), PlainDate(2002, 1, 1)));
-    print(debt.snapshot);
     debt.apply(DebtEvent(EventType.EXPECTATION, BigDecimal.parse("1100"), PlainDate(2002, 2, 1)));
-    print(debt.snapshot);
     debt.apply(DebtEvent(EventType.SNAPSHOT, BigDecimal.parse("0"), PlainDate(2002, 3, 1)));
-    print(debt.snapshot);
     debt.apply(DebtEvent(EventType.SNAPSHOT, BigDecimal.parse("0"), PlainDate(2002, 4, 1)));
-    print(debt.snapshot);
     debt.apply(DebtEvent(EventType.PAYMENT, BigDecimal.parse("2000"), PlainDate(2002, 5, 1)));
-    print(debt.snapshot);
     debt.apply(DebtEvent(EventType.SNAPSHOT, BigDecimal.parse("0"), PlainDate(2002, 6, 1)));
-    print(debt.snapshot);
   });
 }
 
