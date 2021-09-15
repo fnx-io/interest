@@ -1,0 +1,11 @@
+name: debt_counter
+version: 0.0.1
+
+environment:
+  sdk: '>=2.12.0 <3.0.0'
+
+dependencies:
+  big_decimal: ^0.2.1
+
+dev_dependencies:
+  test: ^1.17.12
