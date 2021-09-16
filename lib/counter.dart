@@ -47,16 +47,16 @@ class DebtEvent implements Comparable<DebtEvent> {
 }
 
 class Account {
-  final BigDecimal balance;
+  BigDecimal balance;
   final BigDecimal dailyInterrest;
 
   Account.parse(String balance, String dailyInterrest) : this(BigDecimal.parse(balance), BigDecimal.parse(dailyInterrest));
 
   Account(this.balance, this.dailyInterrest);
 
-  Account withBalance(BigDecimal newBalance) => Account(newBalance, this.dailyInterrest);
+  void setBalance(BigDecimal newBalance) => balance = newBalance;
 
-  Account addBalance(BigDecimal addBalance) => Account(this.balance + addBalance, this.dailyInterrest);
+  void addBalance(BigDecimal addBalance) => balance = this.balance + addBalance;
 }
 
 class DebtSnapshot {
@@ -67,10 +67,11 @@ class DebtSnapshot {
   final BigDecimal lateInterest;
   final BigDecimal sanctions;
   final BigDecimal sanctionsInterest;
+  final BigDecimal expenses;
   final BigDecimal sum;
 
-  DebtSnapshot(this.date, this.principal, this.principalInterest, this.late, this.lateInterest, this.sanctions, this.sanctionsInterest)
-      : sum = principal + principalInterest + lateInterest + sanctions + sanctionsInterest;
+  DebtSnapshot(this.date, this.principal, this.principalInterest, this.late, this.lateInterest, this.sanctions, this.sanctionsInterest, this.expenses)
+      : sum = principal + principalInterest + lateInterest + sanctions + sanctionsInterest + expenses;
 
   @override
   String toString() {
@@ -81,16 +82,24 @@ class DebtSnapshot {
 class Debt {
   PlainDate? lastEvent;
 
-  BigDecimal zero = BigDecimal.parse("0");
+  static final BigDecimal zero = BigDecimal.parse("0");
 
-  Account principal = Account.parse("0", (1.10 / 360).toString());
-  Account principalInterest = Account.parse("0", "0");
-  Account late = Account.parse("0", (0.15 / 360).toString());
-  Account lateInterest = Account.parse("0", "0");
-  Account sanctions = Account.parse("0", "0");
-  Account sanctionsInterest = Account.parse("0", "0");
+  final Account principal;
+  final Account principalInterest;
+  final Account late;
+  final Account lateInterest;
+  final Account sanctions;
+  final Account sanctionsInterest;
+  final Account expenses;
 
-  Debt();
+  Debt(
+      {required this.principal,
+      required this.principalInterest,
+      required this.late,
+      required this.lateInterest,
+      required this.sanctions,
+      required this.sanctionsInterest,
+      required this.expenses});
 
   BigDecimal get sum {
     return principal.balance + principalInterest.balance + late.balance + sanctions.balance;
@@ -99,37 +108,62 @@ class Debt {
   void apply(DebtEvent e) {
     print("Applying: $e");
     if (lastEvent != null && lastEvent != e.date) {
-      principalInterest = principalInterest.addBalance(DebtCounter.countInterest(lastEvent!, e.date, DebtCounter.count30E360Distance, principal));
-      lateInterest = lateInterest.addBalance(DebtCounter.countInterest(lastEvent!, e.date, DebtCounter.count30E360Distance, late));
+      principalInterest.addBalance(DebtCounter.countInterest(lastEvent!, e.date, DebtCounter.count30E360Distance, principal));
+      if (late.balance > zero) {
+        lateInterest.addBalance(DebtCounter.countInterest(lastEvent!, e.date, DebtCounter.count30E360Distance, late));
+      }
+      sanctionsInterest.addBalance(DebtCounter.countInterest(lastEvent!, e.date, DebtCounter.count30E360Distance, sanctions));
     }
     lastEvent = e.date;
     if (e.type == EventType.BALANCE) {
-      principal = principal.addBalance(e.amount);
+      principal.addBalance(e.amount);
     }
     if (e.type == EventType.EXPECTATION) {
       if (e.amount < zero) throw Exception("Expectation cannot be negative");
-      late = late.addBalance(e.amount);
+      late.addBalance(e.amount);
     }
     if (e.type == EventType.PAYMENT) {
       if (e.amount < zero) throw Exception("Payment cannot be negative");
-      principal = principal.addBalance(-e.amount);
-      late = late.addBalance(-e.amount);
+      BigDecimal payment = e.amount;
+      if (payment > zero) payment = _applyPayment(expenses, payment);
+      if (payment > zero) payment = _applyPayment(sanctionsInterest, payment);
+      if (payment > zero) payment = _applyPayment(sanctions, payment);
+      if (payment > zero) payment = _applyPayment(lateInterest, payment);
+      if (payment > zero) payment = _applyPayment(late, payment);
+      if (payment > zero) payment = _applyPayment(principalInterest, payment);
+      if (payment > zero) payment = _applyPayment(principal, payment);
+      late.addBalance(-e.amount);
     }
     if (e.type == EventType.SANCTION) {
-      sanctions = sanctions.addBalance(e.amount);
+      sanctions.addBalance(e.amount);
     }
     print("Result: $snapshot");
   }
 
   DebtSnapshot get snapshot {
     return DebtSnapshot(
-        lastEvent ?? PlainDate(1, 1, 1),
-        this.principal.balance.withScale(2, roundingMode: RoundingMode.HALF_UP),
-        this.principalInterest.balance.withScale(2, roundingMode: RoundingMode.HALF_UP),
-        this.late.balance > zero ? this.late.balance.withScale(2, roundingMode: RoundingMode.HALF_UP) : zero,
-        this.lateInterest.balance.withScale(2, roundingMode: RoundingMode.HALF_UP),
-        this.sanctions.balance.withScale(2, roundingMode: RoundingMode.HALF_UP),
-        this.sanctionsInterest.balance.withScale(2, roundingMode: RoundingMode.HALF_UP));
+      lastEvent ?? PlainDate(1, 1, 1),
+      this.principal.balance.withScale(2, roundingMode: RoundingMode.HALF_UP),
+      this.principalInterest.balance.withScale(2, roundingMode: RoundingMode.HALF_UP),
+      this.late.balance > zero ? this.late.balance.withScale(2, roundingMode: RoundingMode.HALF_UP) : zero,
+      this.lateInterest.balance.withScale(2, roundingMode: RoundingMode.HALF_UP),
+      this.sanctions.balance.withScale(2, roundingMode: RoundingMode.HALF_UP),
+      this.sanctionsInterest.balance.withScale(2, roundingMode: RoundingMode.HALF_UP),
+      this.expenses.balance.withScale(2, roundingMode: RoundingMode.HALF_UP),
+    );
+  }
+
+  BigDecimal _applyPayment(Account a, BigDecimal payment) {
+    if (payment < zero) throw Exception("Negative payment!");
+    if (a.balance <= zero) return payment; // nothing to pay here
+    if (a.balance > payment) {
+      a.balance = a.balance - payment;
+      return zero;
+    } else {
+      payment = payment - a.balance;
+      a.balance = zero;
+      return payment;
+    }
   }
 }
 

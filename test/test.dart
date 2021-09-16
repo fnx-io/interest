@@ -1,5 +1,5 @@
 import 'package:big_decimal/big_decimal.dart';
-import 'package:debt_counter/counter.dart';
+import 'package:interest/counter.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -34,13 +34,15 @@ void main() {
   });
 
   test('complex debt', () {
-    var debt = Debt();
-    debt.principal = Account.parse("0", (1.10 / 360).toString());
-    debt.principalInterest = Account.parse("0", "0");
-    debt.late = Account.parse("0", (0.15 / 360).toString());
-    debt.lateInterest = Account.parse("0", "0");
-    debt.sanctions = Account.parse("0", "0");
-    debt.sanctionsInterest = Account.parse("0", "0");
+    var debt = Debt(
+      principal: Account.parse("0", (1.10 / 360).toString()),
+      principalInterest: Account.parse("0", "0"),
+      late: Account.parse("0", (0.15 / 360).toString()),
+      lateInterest: Account.parse("0", "0"),
+      sanctions: Account.parse("0", "0"),
+      sanctionsInterest: Account.parse("0", "0"),
+      expenses: Account.parse("0", "0"),
+    );
 
     print(debt.snapshot);
 
