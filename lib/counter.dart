@@ -129,7 +129,6 @@ class Debt {
       if (payment > zero) payment = _applyPayment(sanctionsInterest, payment);
       if (payment > zero) payment = _applyPayment(sanctions, payment);
       if (payment > zero) payment = _applyPayment(lateInterest, payment);
-      if (payment > zero) payment = _applyPayment(late, payment);
       if (payment > zero) payment = _applyPayment(principalInterest, payment);
       if (payment > zero) payment = _applyPayment(principal, payment);
       late.addBalance(-e.amount);
